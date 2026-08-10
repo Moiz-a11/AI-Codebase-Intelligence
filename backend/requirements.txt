@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+chromadb
+sentence-transformers
+langchain
+langgraph
+tree-sitter
+tree-sitter-language-pack
+ollama
+python-dotenv
+pytest
