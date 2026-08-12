@@ -583,25 +583,7 @@ function App() {
 
         {/* ================= TECH STACK ================= */}
 
-        <section className="tech-stack">
 
-          <div>
-            <span>BUILT WITH</span>
-            <h3>Modern AI Technology</h3>
-          </div>
-
-          <div className="tech-items">
-
-            <Tech name="React" icon="⚛" />
-            <Tech name="FastAPI" icon="⚡" />
-            <Tech name="ChromaDB" icon="●" />
-            <Tech name="RAG" icon="◈" />
-            <Tech name="Ollama" icon="◉" />
-            <Tech name="Python" icon="🐍" />
-
-          </div>
-
-        </section>
 
         {/* Footer */}
 
