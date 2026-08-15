@@ -1,9 +1,14 @@
 import { useState } from "react";
 import "./App.css";
 
+
 function App() {
   const [file, setFile] = useState(null);
   const [query, setQuery] = useState("");
+  const [repositoryId, setRepositoryId] = useState(null);
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const quickQueries = [
     {
@@ -33,29 +38,148 @@ function App() {
     },
   ];
 
+   // File upload handler
   const handleFileChange = (event) => {
     const selectedFile = event.target.files[0];
 
-    if (selectedFile) {
-      setFile(selectedFile);
+    if (!selectedFile) {
+      return;
     }
+
+    if (!selectedFile.name.toLowerCase().endsWith(".zip")) {
+      setError("Please select a ZIP file.");
+      setFile(null);
+      return;
+    }
+
+    setFile(selectedFile);
+    setRepositoryId(null);
+    setResults([]);
+    setError("");
   };
 
-  const handleAnalyze = () => {
-    if (!file) {
-      alert("Please upload your repository first.");
-      return;
+  const handleAnalyze = async () => {
+  if (!file) {
+    alert("Please upload your repository first.");
+    return;
+  }
+
+  if (!query.trim()) {
+    alert("Please enter your question.");
+    return;
+  }
+
+  setLoading(true);
+  setError("");
+
+  try {
+    let currentRepositoryId = repositoryId;
+
+    /*
+     * Upload and index only if we don't
+     * already have a repository ID.
+     */
+
+    if (!currentRepositoryId) {
+
+      const formData = new FormData();
+
+      formData.append(
+        "file",
+        file
+      );
+
+      const uploadResponse = await fetch(
+        "http://127.0.0.1:8000/api/upload",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const uploadData =
+        await uploadResponse.json();
+
+      if (!uploadResponse.ok) {
+
+        throw new Error(
+          uploadData.detail ||
+          "Repository upload failed."
+        );
+      }
+
+      currentRepositoryId =
+        uploadData.repository_id;
+
+      setRepositoryId(
+        currentRepositoryId
+      );
+
+      console.log(
+        "Repository indexed:",
+        uploadData
+      );
     }
 
-    if (!query.trim()) {
-      alert("Please enter what you want the AI to analyze.");
-      return;
-    }
+    /*
+     * Query ChromaDB
+     */
 
-    alert(
-      `Repository: ${file.name}\n\nRequest: ${query}\n\nBackend connection will be added next.`
+    const queryResponse = await fetch(
+      "http://127.0.0.1:8000/api/rag/query",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          repository_id:
+            currentRepositoryId,
+
+          question:
+            query,
+
+          top_k: 5,
+        }),
+      }
     );
-  };
+
+    const queryData =
+      await queryResponse.json();
+
+    if (!queryResponse.ok) {
+
+      throw new Error(
+        queryData.detail ||
+        "RAG query failed."
+      );
+    }
+
+    setResults(
+      queryData.results || []
+    );
+
+    console.log(
+      "Retrieved chunks:",
+      queryData.results
+    );
+
+  } catch (err) {
+
+    console.error(err);
+
+    setError(
+      err.message ||
+      "Something went wrong."
+    );
+
+  } finally {
+
+    setLoading(false);
+  }
+};
 
   return (
     <div className="app">

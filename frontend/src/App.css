@@ -1658,3 +1658,152 @@ footer a:hover {
   }
 
 }
+.rag-status {
+  margin: 20px 0;
+  padding: 16px;
+
+  border: 1px solid #30345a;
+  border-radius: 12px;
+
+  background: #0b0e1b;
+  color: #a78bfa;
+
+  font-size: 13px;
+}
+
+.rag-error {
+  margin: 20px 0;
+  padding: 16px;
+
+  border: 1px solid #7f1d1d;
+  border-radius: 12px;
+
+  background: #180b10;
+  color: #fca5a5;
+
+  font-size: 13px;
+}
+
+.loader {
+  width: 14px;
+  height: 14px;
+
+  display: inline-block;
+
+  margin-right: 10px;
+
+  border: 2px solid #383b55;
+  border-top-color: #a78bfa;
+
+  border-radius: 50%;
+
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.rag-results {
+  margin-top: 25px;
+}
+
+.results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 15px;
+}
+
+.results-header h2 {
+  margin-top: 6px;
+
+  font-size: 20px;
+}
+
+.results-header > span {
+  color: #70758a;
+  font-size: 11px;
+}
+
+.results-badge {
+  color: #a78bfa;
+
+  font-size: 9px;
+  font-weight: 700;
+
+  letter-spacing: 1px;
+}
+
+.result-card {
+  margin-bottom: 12px;
+
+  overflow: hidden;
+
+  border: 1px solid #24283b;
+  border-radius: 12px;
+
+  background: #080a13;
+}
+
+.result-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 13px 15px;
+
+  border-bottom: 1px solid #1c2030;
+
+  background: #0d101c;
+}
+
+.result-top strong {
+  display: block;
+
+  color: #c4b5fd;
+
+  font-size: 12px;
+}
+
+.result-top span:not(.result-number) {
+  display: block;
+
+  margin-top: 5px;
+
+  color: #656b7f;
+
+  font-size: 9px;
+}
+
+.result-number {
+  color: #6366f1;
+
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.result-card pre {
+  max-height: 260px;
+
+  overflow-x: auto;
+
+  margin: 0;
+  padding: 16px;
+
+  background: #05070d;
+
+  color: #aeb4c7;
+
+  font-family:
+    "Cascadia Code",
+    "Fira Code",
+    monospace;
+
+  font-size: 11px;
+
+  line-height: 1.7;
+}
