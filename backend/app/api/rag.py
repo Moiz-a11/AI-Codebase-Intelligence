@@ -1,8 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from app.services.rag_service import RAGService
 from app.rag.retriever import CodeRetriever
+from app.services.rag_service import RAGService
+from app.services.llm_service import LLMService
 
 
 router = APIRouter(
@@ -34,6 +35,8 @@ class QueryRequest(BaseModel):
 rag_service = RAGService()
 
 retriever = CodeRetriever()
+
+llm_service = LLMService()
 
 
 @router.post("/index")
@@ -76,19 +79,91 @@ def query_repository(
 
     try:
 
+        # ==========================================
+        # STEP 1 — RETRIEVE RELEVANT CODE
+        # ==========================================
+
         results = retriever.retrieve(
             repository_id=request.repository_id,
             query=request.question,
             top_k=request.top_k,
         )
 
+        if not results:
+
+            return {
+                "success": True,
+                "question": request.question,
+                "answer": (
+                    "I could not find relevant "
+                    "code in the repository."
+                ),
+                "results": [],
+            }
+
+
+        # ==========================================
+        # STEP 2 — BUILD CONTEXT
+        # ==========================================
+
+        context_parts = []
+
+        for index, result in enumerate(results):
+
+            context_parts.append(
+                f"""
+SOURCE {index + 1}
+
+FILE:
+{result["file_path"]}
+
+LINES:
+{result["start_line"]}-{result["end_line"]}
+
+CODE:
+{result["text"]}
+"""
+            )
+
+        context = "\n".join(
+            context_parts
+        )
+
+
+        # ==========================================
+        # STEP 3 — SEND TO QWEN
+        # ==========================================
+
+        answer = llm_service.generate(
+            question=request.question,
+            context=context,
+        )
+
+
+        # ==========================================
+        # STEP 4 — RETURN ANSWER + SOURCES
+        # ==========================================
+
         return {
+
             "success": True,
-            "question": request.question,
-            "results": results,
+
+            "question":
+                request.question,
+
+            "answer":
+                answer,
+
+            "results":
+                results,
         }
 
+
     except Exception as error:
+
+        print(
+            f"RAG query error: {error}"
+        )
 
         raise HTTPException(
             status_code=500,

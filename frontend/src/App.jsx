@@ -9,6 +9,7 @@ function App() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [answer, setAnswer] = useState("");
 
   const quickQueries = [
     {
@@ -148,6 +149,13 @@ function App() {
 
     const queryData =
       await queryResponse.json();
+      setAnswer(
+      queryData.answer || ""
+      );
+
+      setResults(
+      queryData.results || []
+      );
 
     if (!queryResponse.ok) {
 
@@ -671,6 +679,14 @@ function App() {
 
         </section>
 
+        {/* ================= RAG RESULTS ================= */}
+        <RAGResults
+          results={results}
+          loading={loading}
+          error={error}
+          answer={answer}
+        />
+
         {/* ================= FEATURES ================= */}
 
         <section className="feature-grid">
@@ -727,6 +743,76 @@ function App() {
       </main>
 
     </div>
+  );
+}
+
+
+/* ================= RAG RESULTS ================= */
+
+function RAGResults({ results, loading, error, answer }) {
+  if (loading) {
+    return (
+      <section className="rag-results">
+        <div className="rag-status">
+          <span className="loader"></span>
+          Analyzing your codebase...
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="rag-results">
+        <div className="rag-error">❌ {error}</div>
+      </section>
+    );
+  }
+
+  if (!answer && (!results || results.length === 0)) {
+    return null;
+  }
+
+  return (
+    <section className="rag-results">
+      {answer && (
+        <div className="ai-answer">
+          <div className="answer-header">
+            <span className="results-badge">AI ANALYSIS</span>
+            <h2>AI Answer</h2>
+          </div>
+          <div className="answer-content">{answer}</div>
+        </div>
+      )}
+
+      {results && results.length > 0 && (
+        <>
+          <div className="results-header">
+            <div>
+              <span className="results-badge">RAG RESULTS</span>
+              <h2>Relevant Code</h2>
+            </div>
+            <span>{results.length} sources</span>
+          </div>
+
+          {results.map((result, index) => (
+            <div className="result-card" key={`${result.file_path}-${index}`}>
+              <div className="result-top">
+                <div>
+                  <strong>{result.file_path}</strong>
+                  <span>Lines {result.start_line}-{result.end_line}</span>
+                </div>
+                <span className="result-number">#{index + 1}</span>
+              </div>
+
+              <pre>
+                <code>{result.text}</code>
+              </pre>
+            </div>
+          ))}
+        </>
+      )}
+    </section>
   );
 }
 
