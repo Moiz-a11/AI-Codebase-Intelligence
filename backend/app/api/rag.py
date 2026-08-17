@@ -95,8 +95,9 @@ def query_repository(
                 "success": True,
                 "question": request.question,
                 "answer": (
-                    "I could not find relevant "
-                    "code in the repository."
+                    "I could not find enough "
+                    "relevant code in the repository "
+                    "to answer this question."
                 ),
                 "results": [],
             }
@@ -131,7 +132,7 @@ CODE:
 
 
         # ==========================================
-        # STEP 3 — SEND TO QWEN
+        # STEP 3 — SEND CONTEXT TO QWEN
         # ==========================================
 
         answer = llm_service.generate(
@@ -145,17 +146,10 @@ CODE:
         # ==========================================
 
         return {
-
             "success": True,
-
-            "question":
-                request.question,
-
-            "answer":
-                answer,
-
-            "results":
-                results,
+            "question": request.question,
+            "answer": answer,
+            "results": results,
         }
 
 

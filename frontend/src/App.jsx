@@ -1,7 +1,6 @@
 import { useState } from "react";
 import "./App.css";
 
-
 function App() {
   const [file, setFile] = useState(null);
   const [query, setQuery] = useState("");
@@ -39,7 +38,10 @@ function App() {
     },
   ];
 
-   // File upload handler
+  // ==========================================
+  // FILE UPLOAD HANDLER
+  // ==========================================
+
   const handleFileChange = (event) => {
     const selectedFile = event.target.files[0];
 
@@ -56,138 +58,163 @@ function App() {
     setFile(selectedFile);
     setRepositoryId(null);
     setResults([]);
+    setAnswer("");
     setError("");
   };
 
+  // ==========================================
+  // ANALYZE REPOSITORY
+  // ==========================================
+
   const handleAnalyze = async () => {
-  if (!file) {
-    alert("Please upload your repository first.");
-    return;
-  }
+    if (!file && !repositoryId) {
+      setError("Please upload your repository first.");
+      return;
+    }
 
-  if (!query.trim()) {
-    alert("Please enter your question.");
-    return;
-  }
+    if (!query.trim()) {
+      setError("Please enter your question.");
+      return;
+    }
 
-  setLoading(true);
-  setError("");
+    setLoading(true);
+    setError("");
+    setAnswer("");
+    setResults([]);
 
-  try {
-    let currentRepositoryId = repositoryId;
+    try {
+      let currentRepositoryId = repositoryId;
 
-    /*
-     * Upload and index only if we don't
-     * already have a repository ID.
-     */
+      // ==========================================
+      // 1. UPLOAD REPOSITORY
+      // ==========================================
 
-    if (!currentRepositoryId) {
+      if (!currentRepositoryId) {
+        const formData = new FormData();
 
-      const formData = new FormData();
+        formData.append("file", file);
 
-      formData.append(
-        "file",
-        file
+        console.log("Uploading repository...");
+
+        const uploadResponse = await fetch(
+          "http://127.0.0.1:8000/api/upload",
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        const uploadData = await uploadResponse.json();
+
+        console.log("Upload response:", uploadData);
+
+        if (!uploadResponse.ok) {
+          throw new Error(
+            uploadData.detail ||
+              "Repository upload failed."
+          );
+        }
+
+        currentRepositoryId =
+          uploadData.repository_id;
+
+        if (!currentRepositoryId) {
+          throw new Error(
+            "Repository ID was not returned by the backend."
+          );
+        }
+
+        setRepositoryId(currentRepositoryId);
+      }
+
+      // ==========================================
+      // 2. ASK RAG + QWEN
+      // ==========================================
+
+      console.log(
+        "Sending question to backend..."
       );
 
-      const uploadResponse = await fetch(
-        "http://127.0.0.1:8000/api/upload",
+      const queryResponse = await fetch(
+        "http://127.0.0.1:8000/api/rag/query",
         {
           method: "POST",
-          body: formData,
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            repository_id:
+              currentRepositoryId,
+
+            question: query,
+
+            top_k: 5,
+          }),
         }
       );
 
-      const uploadData =
-        await uploadResponse.json();
+      console.log(
+        "Query response status:",
+        queryResponse.status
+      );
 
-      if (!uploadResponse.ok) {
+      const queryData =
+        await queryResponse.json();
 
+      console.log(
+        "FULL RAG RESPONSE:",
+        queryData
+      );
+
+      if (!queryResponse.ok) {
         throw new Error(
-          uploadData.detail ||
-          "Repository upload failed."
+          queryData.detail ||
+            "RAG query failed."
         );
       }
 
-      currentRepositoryId =
-        uploadData.repository_id;
-
-      setRepositoryId(
-        currentRepositoryId
-      );
+      // ==========================================
+      // 3. DISPLAY QWEN ANSWER
+      // ==========================================
 
       console.log(
-        "Repository indexed:",
-        uploadData
+        "AI ANSWER:",
+        queryData.answer
       );
-    }
 
-    /*
-     * Query ChromaDB
-     */
-
-    const queryResponse = await fetch(
-      "http://127.0.0.1:8000/api/rag/query",
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json",
-        },
-
-        body: JSON.stringify({
-          repository_id:
-            currentRepositoryId,
-
-          question:
-            query,
-
-          top_k: 5,
-        }),
-      }
-    );
-
-    const queryData =
-      await queryResponse.json();
       setAnswer(
-      queryData.answer || ""
+        queryData.answer || ""
       );
+
+      // ==========================================
+      // 4. DISPLAY RAG SOURCES
+      // ==========================================
 
       setResults(
-      queryData.results || []
+        queryData.results || []
       );
 
-    if (!queryResponse.ok) {
-
-      throw new Error(
-        queryData.detail ||
-        "RAG query failed."
+    } catch (err) {
+      console.error(
+        "AI ANALYSIS ERROR:",
+        err
       );
+
+      setError(
+        err.message ||
+          "Something went wrong."
+      );
+
+    } finally {
+      console.log(
+        "Analysis finished."
+      );
+
+      setLoading(false);
     }
-
-    setResults(
-      queryData.results || []
-    );
-
-    console.log(
-      "Retrieved chunks:",
-      queryData.results
-    );
-
-  } catch (err) {
-
-    console.error(err);
-
-    setError(
-      err.message ||
-      "Something went wrong."
-    );
-
-  } finally {
-
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <div className="app">
@@ -197,17 +224,24 @@ function App() {
       <aside className="sidebar">
 
         <div className="brand">
+
           <div className="brand-logo">
             &lt;/&gt;
           </div>
 
           <div>
+
             <h2>
-              AI Codebase <span>Intelligence</span>
+              AI Codebase{" "}
+              <span>Intelligence</span>
             </h2>
 
-            <p>Understand. Analyze. Improve.</p>
+            <p>
+              Understand. Analyze. Improve.
+            </p>
+
           </div>
+
         </div>
 
         <nav className="sidebar-nav">
@@ -249,7 +283,7 @@ function App() {
 
         </nav>
 
-        {/* System status */}
+        {/* ================= SYSTEM STATUS ================= */}
 
         <div className="system-status">
 
@@ -265,6 +299,7 @@ function App() {
           <div className="status-card">
 
             <div className="status-row">
+
               <div className="status-icon purple">
                 ✦
               </div>
@@ -275,9 +310,11 @@ function App() {
               </div>
 
               <b className="green-dot"></b>
+
             </div>
 
             <div className="status-row">
+
               <div className="status-icon blue">
                 ≋
               </div>
@@ -286,9 +323,11 @@ function App() {
                 <span>Vector Database</span>
                 <small>Connected</small>
               </div>
+
             </div>
 
             <div className="status-row">
+
               <div className="status-icon green">
                 ◈
               </div>
@@ -297,6 +336,7 @@ function App() {
                 <span>Security Scanner</span>
                 <small>Ready</small>
               </div>
+
             </div>
 
           </div>
@@ -309,7 +349,7 @@ function App() {
 
       <main className="main">
 
-        {/* Top bar */}
+        {/* ================= TOP BAR ================= */}
 
         <header className="topbar">
 
@@ -360,8 +400,9 @@ function App() {
             </h1>
 
             <p>
-              Upload your repository and let AI analyze, explain,
-              review, find bugs and answer anything about your code.
+              Upload your repository and let AI analyze,
+              explain, review, find bugs and answer
+              anything about your code.
             </p>
 
             <div className="hero-buttons">
@@ -369,7 +410,11 @@ function App() {
               <button
                 className="primary-button"
                 onClick={() =>
-                  document.getElementById("repository-upload").click()
+                  document
+                    .getElementById(
+                      "repository-upload"
+                    )
+                    .click()
                 }
               >
                 ↑ Upload Repository
@@ -390,10 +435,15 @@ function App() {
               <div className="laptop-screen">
 
                 <div className="code-line purple-line"></div>
+
                 <div className="code-line blue-line"></div>
+
                 <div className="code-line green-line"></div>
+
                 <div className="code-line purple-line small"></div>
+
                 <div className="code-line blue-line"></div>
+
                 <div className="code-line green-line small"></div>
 
               </div>
@@ -511,6 +561,7 @@ function App() {
                   {file ? (
                     <>
                       <h3>{file.name}</h3>
+
                       <p className="file-success">
                         ✓ Repository selected
                       </p>
@@ -535,11 +586,13 @@ function App() {
 
               </div>
 
-              {/* Quick queries */}
+              {/* Quick Queries */}
 
               <div className="quick-query-section">
 
-                <h3>Quick Queries</h3>
+                <h3>
+                  Quick Queries
+                </h3>
 
                 <p>
                   Start analyzing your repository
@@ -547,25 +600,31 @@ function App() {
 
                 <div className="quick-query-list">
 
-                  {quickQueries.map((item) => (
-                    <button
-                      key={item.text}
-                      className="quick-query"
-                      onClick={() => setQuery(item.value)}
-                    >
+                  {quickQueries.map(
+                    (item) => (
+                      <button
+                        key={item.text}
+                        className="quick-query"
+                        onClick={() =>
+                          setQuery(
+                            item.value
+                          )
+                        }
+                      >
 
-                      <span className="query-icon">
-                        {item.icon}
-                      </span>
+                        <span className="query-icon">
+                          {item.icon}
+                        </span>
 
-                      <span>
-                        {item.text}
-                      </span>
+                        <span>
+                          {item.text}
+                        </span>
 
-                      <b>›</b>
+                        <b>›</b>
 
-                    </button>
-                  ))}
+                      </button>
+                    )
+                  )}
 
                 </div>
 
@@ -573,7 +632,7 @@ function App() {
 
             </div>
 
-            {/* Chat input */}
+            {/* Chat Input */}
 
             <div className="chat-input-container">
 
@@ -584,12 +643,19 @@ function App() {
               <input
                 type="text"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) =>
+                  setQuery(e.target.value)
+                }
                 placeholder="Ask anything about your codebase..."
               />
 
-              <button onClick={handleAnalyze}>
-                ✦ Ask AI
+              <button
+                onClick={handleAnalyze}
+                disabled={loading}
+              >
+                {loading
+                  ? "Analyzing..."
+                  : "✦ Ask AI"}
               </button>
 
             </div>
@@ -603,11 +669,15 @@ function App() {
             <div className="insights-header">
 
               <div>
+
                 <span className="brain-icon">
                   ◈
                 </span>
 
-                <h2>AI Insights</h2>
+                <h2>
+                  AI Insights
+                </h2>
+
               </div>
 
               <span className="live">
@@ -625,8 +695,13 @@ function App() {
               </div>
 
               <div>
-                <h3>Code Health</h3>
-                <strong>Excellent</strong>
+                <h3>
+                  Code Health
+                </h3>
+
+                <strong>
+                  Excellent
+                </strong>
               </div>
 
             </div>
@@ -680,6 +755,7 @@ function App() {
         </section>
 
         {/* ================= RAG RESULTS ================= */}
+
         <RAGResults
           results={results}
           loading={loading}
@@ -721,13 +797,10 @@ function App() {
 
         </section>
 
-        {/* ================= TECH STACK ================= */}
-
-
-
-        {/* Footer */}
+        {/* ================= FOOTER ================= */}
 
         <footer>
+
           <span>
             © 2026 AI Codebase Intelligence
           </span>
@@ -738,6 +811,7 @@ function App() {
             <a>Documentation</a>
             <a>GitHub</a>
           </div>
+
         </footer>
 
       </main>
@@ -746,17 +820,27 @@ function App() {
   );
 }
 
-
 /* ================= RAG RESULTS ================= */
 
-function RAGResults({ results, loading, error, answer }) {
+function RAGResults({
+  results,
+  loading,
+  error,
+  answer,
+}) {
+
   if (loading) {
     return (
       <section className="rag-results">
+
         <div className="rag-status">
+
           <span className="loader"></span>
+
           Analyzing your codebase...
+
         </div>
+
       </section>
     );
   }
@@ -764,62 +848,134 @@ function RAGResults({ results, loading, error, answer }) {
   if (error) {
     return (
       <section className="rag-results">
-        <div className="rag-error">❌ {error}</div>
+
+        <div className="rag-error">
+          ❌ {error}
+        </div>
+
       </section>
     );
   }
 
-  if (!answer && (!results || results.length === 0)) {
+  if (
+    !answer &&
+    (!results ||
+      results.length === 0)
+  ) {
     return null;
   }
 
   return (
     <section className="rag-results">
+
+      {/* ================= AI ANSWER ================= */}
+
       {answer && (
         <div className="ai-answer">
+
           <div className="answer-header">
-            <span className="results-badge">AI ANALYSIS</span>
-            <h2>AI Answer</h2>
+
+            <span className="results-badge">
+              AI ANALYSIS
+            </span>
+
+            <h2>
+              AI Answer
+            </h2>
+
           </div>
-          <div className="answer-content">{answer}</div>
+
+          <div className="answer-content">
+            {answer}
+          </div>
+
         </div>
       )}
 
-      {results && results.length > 0 && (
-        <>
-          <div className="results-header">
-            <div>
-              <span className="results-badge">RAG RESULTS</span>
-              <h2>Relevant Code</h2>
-            </div>
-            <span>{results.length} sources</span>
-          </div>
+      {/* ================= SOURCES ================= */}
 
-          {results.map((result, index) => (
-            <div className="result-card" key={`${result.file_path}-${index}`}>
-              <div className="result-top">
-                <div>
-                  <strong>{result.file_path}</strong>
-                  <span>Lines {result.start_line}-{result.end_line}</span>
-                </div>
-                <span className="result-number">#{index + 1}</span>
+      {results &&
+        results.length > 0 && (
+          <>
+
+            <div className="results-header">
+
+              <div>
+
+                <span className="results-badge">
+                  RAG RESULTS
+                </span>
+
+                <h2>
+                  Relevant Code
+                </h2>
+
               </div>
 
-              <pre>
-                <code>{result.text}</code>
-              </pre>
+              <span>
+                {results.length} sources
+              </span>
+
             </div>
-          ))}
-        </>
-      )}
+
+            {results.map(
+              (result, index) => (
+
+                <div
+                  className="result-card"
+                  key={`${result.file_path}-${index}`}
+                >
+
+                  <div className="result-top">
+
+                    <div>
+
+                      <strong>
+                        {result.file_path}
+                      </strong>
+
+                      <span>
+                        Lines{" "}
+                        {result.start_line}-
+                        {result.end_line}
+                      </span>
+
+                    </div>
+
+                    <span className="result-number">
+                      #{index + 1}
+                    </span>
+
+                  </div>
+
+                  <pre>
+
+                    <code>
+                      {result.text}
+                    </code>
+
+                  </pre>
+
+                </div>
+
+              )
+            )}
+
+          </>
+        )}
+
     </section>
   );
 }
 
-
 /* ================= COMPONENTS ================= */
 
-function Stat({ icon, value, label }) {
+function Stat({
+  icon,
+  value,
+  label,
+}) {
+
   return (
     <div className="stat-card">
 
@@ -828,14 +984,20 @@ function Stat({ icon, value, label }) {
       </div>
 
       <div>
-        <strong>{value}</strong>
-        <span>{label}</span>
+
+        <strong>
+          {value}
+        </strong>
+
+        <span>
+          {label}
+        </span>
+
       </div>
 
     </div>
   );
 }
-
 
 function Insight({
   icon,
@@ -843,16 +1005,26 @@ function Insight({
   text,
   type,
 }) {
+
   return (
-    <div className={`insight-item ${type}`}>
+    <div
+      className={`insight-item ${type}`}
+    >
 
       <div className="insight-icon">
         {icon}
       </div>
 
       <div>
-        <h4>{title}</h4>
-        <p>{text}</p>
+
+        <h4>
+          {title}
+        </h4>
+
+        <p>
+          {text}
+        </p>
+
       </div>
 
       <span className="arrow">
@@ -863,32 +1035,47 @@ function Insight({
   );
 }
 
-
 function Feature({
   icon,
   title,
   description,
   color,
 }) {
+
   return (
-    <div className={`feature-card ${color}`}>
+    <div
+      className={`feature-card ${color}`}
+    >
 
       <div className="feature-icon">
         {icon}
       </div>
 
       <div>
-        <h3>{title}</h3>
-        <p>{description}</p>
-        <a>Learn More →</a>
+
+        <h3>
+          {title}
+        </h3>
+
+        <p>
+          {description}
+        </p>
+
+        <a>
+          Learn More →
+        </a>
+
       </div>
 
     </div>
   );
 }
 
+function Tech({
+  name,
+  icon,
+}) {
 
-function Tech({ name, icon }) {
   return (
     <div className="tech">
 
