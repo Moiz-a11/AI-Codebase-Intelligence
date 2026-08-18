@@ -13,6 +13,10 @@ class LLMService:
 
     def generate(self, question: str, context: str):
 
+        MAX_CONTEXT_CHARS = 20000
+        
+        context = context[:MAX_CONTEXT_CHARS]
+
         prompt = f"""
 You are an AI software engineering assistant.
 
@@ -50,7 +54,7 @@ Now provide a clear and useful answer.
                     "temperature": 0.2
                 }
             },
-            timeout=180
+            timeout=600
         )
 
         response.raise_for_status()
