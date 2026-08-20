@@ -9,7 +9,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [answer, setAnswer] = useState("");
-
+  const [sources, setSources] = useState([]);
   const quickQueries = [
     {
       icon: "◈",
@@ -81,6 +81,7 @@ function App() {
     setError("");
     setAnswer("");
     setResults([]);
+    setSources([]);
 
     try {
       let currentRepositoryId = repositoryId;
@@ -191,6 +192,9 @@ function App() {
       // ==========================================
       // 4. DISPLAY RAG SOURCES
       // ==========================================
+        setSources(
+          queryData.sources || []
+        );
 
       setResults(
         queryData.results || []
@@ -758,6 +762,7 @@ function App() {
 
         <RAGResults
           results={results}
+          sources={sources}
           loading={loading}
           error={error}
           answer={answer}
@@ -824,6 +829,7 @@ function App() {
 
 function RAGResults({
   results,
+  sources,
   loading,
   error,
   answer,
@@ -888,6 +894,59 @@ function RAGResults({
           <div className="answer-content">
             {answer}
           </div>
+          {/* ================= SOURCE CITATIONS ================= */}
+
+{sources && sources.length > 0 && (
+  <div className="source-citations">
+
+    <div className="sources-title">
+      <span className="results-badge">
+        SOURCES
+      </span>
+
+      <h3>
+        Answer References
+      </h3>
+    </div>
+
+    <div className="sources-list">
+
+      {sources.map((source, index) => (
+
+        <div
+          className="source-card"
+          key={`${source.file_path}-${index}`}
+        >
+
+          <div className="source-icon">
+            📄
+          </div>
+
+          <div className="source-info">
+
+            <strong>
+              {source.file_path}
+            </strong>
+
+            <span>
+              Lines {source.start_line}-
+              {source.end_line}
+            </span>
+
+          </div>
+
+          <span className="source-number">
+            #{index + 1}
+          </span>
+
+        </div>
+
+      ))}
+
+    </div>
+
+  </div>
+)}
 
         </div>
       )}

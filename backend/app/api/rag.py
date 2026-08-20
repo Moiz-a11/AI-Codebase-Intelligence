@@ -1,3 +1,5 @@
+from requests import request
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
@@ -140,16 +142,32 @@ CODE:
             context=context,
         )
 
+        # ==========================================
+        # STEP 3.5 — BUILD SOURCE CITATIONS
+        # ==========================================
+
+        sources = []
+
+        for result in results:
+
+            sources.append({
+            "file_path": result.get("file_path"),
+            "start_line": result.get("start_line"),
+            "end_line": result.get("end_line"),
+            "rerank_score": result.get("rerank_score"),
+            })
+
 
         # ==========================================
         # STEP 4 — RETURN ANSWER + SOURCES
         # ==========================================
 
         return {
-            "success": True,
-            "question": request.question,
-            "answer": answer,
-            "results": results,
+        "success": True,
+        "question": request.question,
+        "answer": answer,
+        "sources": sources,
+        "results": results,
         }
 
 

@@ -13,27 +13,43 @@ class LLMService:
 
     def generate(self, question: str, context: str):
 
-        MAX_CONTEXT_CHARS = 20000
-        
-        context = context[:MAX_CONTEXT_CHARS]
+       import requests
+
+
+class LLMService:
+
+    def __init__(self):
+        self.url = "http://localhost:11434/api/generate"
+        self.model = "qwen2.5-coder:7b"
+
+    def generate(
+        self,
+        question: str,
+        context: str,
+    ):
+
+        # Prevent sending an unnecessarily large context
+        context = context[:20000]
 
         prompt = f"""
 You are an AI software engineering assistant.
 
-You are analyzing a user's software repository.
-
-Answer the user's question using the repository
+Answer the user's question using ONLY the repository
 context provided below.
 
 IMPORTANT RULES:
 
-1. Use the repository context as your primary source.
-2. Do not invent files, functions, APIs, or code.
-3. If the context is insufficient, clearly say so.
-4. Mention relevant file names when possible.
-5. Explain technical concepts clearly.
-6. If you find a problem, explain why.
-7. Suggest a practical improvement when appropriate.
+1. Do not invent files, functions, classes, APIs, or behavior.
+2. Use the repository context as the primary source of truth.
+3. When explaining something, mention the relevant file path.
+4. Use the exact file paths provided in the context.
+5. If the repository context does not contain enough information,
+   clearly say that the information was not found.
+6. Keep the answer technically accurate and concise.
+7. At the end, provide a Sources section.
+8. In the Sources section, include only files that actually appear
+   in the provided repository context.
+9. Include line numbers when they are available.
 
 USER QUESTION:
 {question}
@@ -41,27 +57,65 @@ USER QUESTION:
 REPOSITORY CONTEXT:
 {context}
 
-Now provide a clear and useful answer.
+ANSWER FORMAT:
+
+### Explanation
+
+Explain the answer clearly.
+
+### How It Works
+
+Explain the important flow step-by-step.
+
+### Sources
+
+- `file/path` — Lines X-Y
+- `file/path` — Lines X-Y
 """
 
-        response = requests.post(
-            self.url,
-            json={
-                "model": self.model,
-                "prompt": prompt,
-                "stream": False,
-                "options": {
-                    "temperature": 0.2
-                }
-            },
-            timeout=600
-        )
+        try:
 
-        response.raise_for_status()
+            response = requests.post(
+                self.url,
+                json={
+                    "model": self.model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.2,
+                    },
+                },
+                timeout=600,
+            )
 
-        data = response.json()
+            response.raise_for_status()
 
-        return data.get(
-            "response",
-            "No answer was generated."
-        )
+            data = response.json()
+
+            return data.get(
+                "response",
+                "No answer generated.",
+            )
+
+        except requests.exceptions.Timeout:
+
+            return (
+                "The AI model took too long to respond. "
+                "Please try a smaller question."
+            )
+
+        except requests.exceptions.ConnectionError:
+
+            return (
+                "Unable to connect to Ollama. "
+                "Please make sure Ollama is running."
+            )
+
+        except Exception as error:
+
+            print(f"LLM error: {error}")
+
+            return (
+                "An error occurred while generating "
+                "the AI response."
+            )
