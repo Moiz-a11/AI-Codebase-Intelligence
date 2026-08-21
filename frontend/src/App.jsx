@@ -10,6 +10,7 @@ function App() {
   const [error, setError] = useState("");
   const [answer, setAnswer] = useState("");
   const [sources, setSources] = useState([]);
+  const [reviewMode, setReviewMode] = useState(false);
   const quickQueries = [
     {
       icon: "◈",
@@ -151,7 +152,11 @@ function App() {
 
             question: query,
 
+
             top_k: 5,
+            
+            review_mode:
+              reviewMode,
           }),
         }
       );
@@ -522,7 +527,15 @@ function App() {
 
             <div className="workspace-tabs">
 
-              <button className="workspace-tab active">
+              <button
+                className={`workspace-tab ${
+                  !reviewMode ? "active" : ""
+                }`}
+                onClick={() => {
+                  setReviewMode(false);
+                  setQuery("");
+                }}
+              >
                 ↑ Repository Upload
               </button>
 
@@ -530,7 +543,17 @@ function App() {
                 💬 AI Chat
               </button>
 
-              <button className="workspace-tab">
+              <button
+                className={`workspace-tab ${
+                  reviewMode ? "active" : ""
+                }`}
+                onClick={() => {
+                  setReviewMode(true);
+                  setQuery(
+                    "Review this code for bugs and improvements."
+                  );
+                }}
+              >
                 &lt;/&gt; Code Review
               </button>
 
@@ -657,8 +680,10 @@ function App() {
                 onClick={handleAnalyze}
                 disabled={loading}
               >
-                {loading
-                  ? "Analyzing..."
+              {loading
+                ? "Analyzing..."
+                : reviewMode
+                  ? "🔍 Review Code"
                   : "✦ Ask AI"}
               </button>
 
@@ -766,6 +791,7 @@ function App() {
           loading={loading}
           error={error}
           answer={answer}
+          reviewMode={reviewMode}
         />
 
         {/* ================= FEATURES ================= */}
@@ -833,6 +859,7 @@ function RAGResults({
   loading,
   error,
   answer,
+  reviewMode,
 }) {
 
   if (loading) {
@@ -886,7 +913,9 @@ function RAGResults({
             </span>
 
             <h2>
-              AI Answer
+              {reviewMode
+                ? "AI Code Review"
+                : "AI Answer"}
             </h2>
 
           </div>

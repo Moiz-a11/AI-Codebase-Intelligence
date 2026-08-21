@@ -32,6 +32,7 @@ class QueryRequest(BaseModel):
         ge=1,
         le=10,
     )
+    review_mode: bool = False
 
 
 rag_service = RAGService()
@@ -140,6 +141,7 @@ CODE:
         answer = llm_service.generate(
             question=request.question,
             context=context,
+            review_mode=request.review_mode,
         )
 
         # ==========================================
