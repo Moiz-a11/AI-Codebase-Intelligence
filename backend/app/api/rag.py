@@ -33,6 +33,7 @@ class QueryRequest(BaseModel):
         le=10,
     )
     review_mode: bool = False
+    review_category: str = "general"
 
 
 rag_service = RAGService()
@@ -142,6 +143,7 @@ CODE:
             question=request.question,
             context=context,
             review_mode=request.review_mode,
+            review_category=request.review_category,
         )
 
         # ==========================================

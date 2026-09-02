@@ -11,6 +11,8 @@ function App() {
   const [answer, setAnswer] = useState("");
   const [sources, setSources] = useState([]);
   const [reviewMode, setReviewMode] = useState(false);
+  const [reviewCategory, setReviewCategory] =
+  useState("general");
   const quickQueries = [
     {
       icon: "◈",
@@ -147,17 +149,12 @@ function App() {
           },
 
           body: JSON.stringify({
-            repository_id:
-              currentRepositoryId,
-
+            repository_id: currentRepositoryId,
             question: query,
-
-
             top_k: 5,
-            
-            review_mode:
-              reviewMode,
-          }),
+            review_mode: reviewMode,
+            review_category: reviewCategory,
+            }),
         }
       );
 
@@ -549,6 +546,7 @@ function App() {
                 }`}
                 onClick={() => {
                   setReviewMode(true);
+                  setReviewCategory("general");
                   setQuery(
                     "Review this code for bugs and improvements."
                   );
@@ -562,6 +560,39 @@ function App() {
               </button>
 
             </div>
+
+
+            {/* ADD THIS BELOW THE TABS */}
+
+            {reviewMode && (
+              <div className="review-categories">
+
+                <button onClick={() => setReviewCategory("bugs")}>
+                  🐛 Bugs
+                </button>
+
+                <button onClick={() => setReviewCategory("security")}>
+                  🛡 Security
+                </button>
+
+                <button onClick={() => setReviewCategory("performance")}>
+                  ⚡ Performance
+                </button>
+
+                <button onClick={() => setReviewCategory("quality")}>
+                  🧹 Code Quality
+                </button>
+
+                <button onClick={() => setReviewCategory("best_practices")}>
+                  ✅ Best Practices
+                </button>
+
+                <button onClick={() => setReviewCategory("maintainability")}>
+                  🔧 Maintainability
+                </button>
+
+              </div>
+            )}
 
             <div className="workspace-content">
 
