@@ -1,4 +1,7 @@
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import "./App.css";
 
 function App() {
@@ -13,6 +16,8 @@ function App() {
   const [reviewMode, setReviewMode] = useState(false);
   const [reviewCategory, setReviewCategory] =
   useState("general");
+
+  
   const quickQueries = [
     {
       icon: "◈",
@@ -884,6 +889,8 @@ function App() {
 
 /* ================= RAG RESULTS ================= */
 
+/* ================= RAG RESULTS ================= */
+
 function RAGResults({
   results,
   sources,
@@ -893,7 +900,37 @@ function RAGResults({
   reviewMode,
 }) {
 
+  const [copied, setCopied] = useState(false);
+
+
+  /* ================= COPY ANSWER ================= */
+
+  const handleCopy = async () => {
+
+    if (!answer) return;
+
+    try {
+
+      await navigator.clipboard.writeText(answer);
+
+      setCopied(true);
+
+      setTimeout(() => {
+        setCopied(false);
+      }, 2000);
+
+    } catch (error) {
+
+      console.error("Copy failed:", error);
+
+    }
+  };
+
+
+  /* ================= LOADING ================= */
+
   if (loading) {
+
     return (
       <section className="rag-results">
 
@@ -901,25 +938,54 @@ function RAGResults({
 
           <span className="loader"></span>
 
-          Analyzing your codebase...
+          <div>
+            <strong>
+              Analyzing your codebase...
+            </strong>
+
+            <span className="loading-text">
+              Retrieving relevant code and generating AI analysis
+            </span>
+          </div>
 
         </div>
 
       </section>
     );
+
   }
 
+
+  /* ================= ERROR ================= */
+
   if (error) {
+
     return (
       <section className="rag-results">
 
         <div className="rag-error">
-          ❌ {error}
+
+          <span className="error-icon">
+            ⚠️
+          </span>
+
+          <div>
+            <strong>
+              Analysis Failed
+            </strong>
+
+            <p>
+              {error}
+            </p>
+          </div>
+
         </div>
 
       </section>
     );
+
   }
+
 
   if (
     !answer &&
@@ -929,92 +995,185 @@ function RAGResults({
     return null;
   }
 
+
   return (
+
     <section className="rag-results">
+
 
       {/* ================= AI ANSWER ================= */}
 
       {answer && (
+
         <div className="ai-answer">
 
           <div className="answer-header">
 
-            <span className="results-badge">
-              AI ANALYSIS
-            </span>
+            <div>
 
-            <h2>
-              {reviewMode
-                ? "AI Code Review"
-                : "AI Answer"}
-            </h2>
+              <span className="results-badge">
+                AI ANALYSIS
+              </span>
+
+              <h2>
+                {reviewMode
+                  ? "AI Code Review"
+                  : "AI Answer"}
+              </h2>
+
+            </div>
+
+
+            {/* COPY BUTTON */}
+
+            <button
+              className="copy-answer-btn"
+              onClick={handleCopy}
+            >
+
+              {copied
+                ? "✓ Copied"
+                : "📋 Copy Answer"}
+
+            </button>
 
           </div>
+
+
+          {/* ================= MARKDOWN ANSWER ================= */}
 
           <div className="answer-content">
-            {answer}
+
+            <ReactMarkdown
+              components={{
+
+                code({
+                  inline,
+                  className,
+                  children,
+                  ...props
+                }) {
+
+                  const match =
+                    /language-(\w+)/.exec(
+                      className || ""
+                    );
+
+
+                  if (!inline && match) {
+
+                    return (
+                      <SyntaxHighlighter
+                        style={vscDarkPlus}
+                        language={match[1]}
+                        PreTag="div"
+                        {...props}
+                      >
+                        {String(children).replace(
+                          /\n$/,
+                          ""
+                        )}
+                      </SyntaxHighlighter>
+                    );
+
+                  }
+
+
+                  return (
+                    <code
+                      className={className}
+                      {...props}
+                    >
+                      {children}
+                    </code>
+                  );
+
+                }
+
+              }}
+            >
+              {answer}
+            </ReactMarkdown>
+
           </div>
+
+
           {/* ================= SOURCE CITATIONS ================= */}
 
-{sources && sources.length > 0 && (
-  <div className="source-citations">
+          {sources &&
+            sources.length > 0 && (
 
-    <div className="sources-title">
-      <span className="results-badge">
-        SOURCES
-      </span>
+              <div className="source-citations">
 
-      <h3>
-        Answer References
-      </h3>
-    </div>
+                <div className="sources-title">
 
-    <div className="sources-list">
+                  <span className="results-badge">
+                    SOURCES
+                  </span>
 
-      {sources.map((source, index) => (
+                  <h3>
+                    Answer References
+                  </h3>
 
-        <div
-          className="source-card"
-          key={`${source.file_path}-${index}`}
-        >
+                </div>
 
-          <div className="source-icon">
-            📄
-          </div>
 
-          <div className="source-info">
+                <div className="sources-list">
 
-            <strong>
-              {source.file_path}
-            </strong>
+                  {sources.map(
+                    (source, index) => (
 
-            <span>
-              Lines {source.start_line}-
-              {source.end_line}
-            </span>
+                      <div
+                        className="source-card"
+                        key={`${source.file_path}-${index}`}
+                      >
 
-          </div>
+                        <div className="source-icon">
+                          📄
+                        </div>
 
-          <span className="source-number">
-            #{index + 1}
-          </span>
+
+                        <div className="source-info">
+
+                          <strong>
+                            {source.file_path}
+                          </strong>
+
+                          <span>
+                            Lines{" "}
+                            {source.start_line}
+                            {" – "}
+                            {source.end_line}
+                          </span>
+
+                        </div>
+
+
+                        <span className="source-number">
+                          #{index + 1}
+                        </span>
+
+                      </div>
+
+                    )
+                  )}
+
+                </div>
+
+              </div>
+
+            )}
 
         </div>
 
-      ))}
-
-    </div>
-
-  </div>
-)}
-
-        </div>
       )}
 
-      {/* ================= SOURCES ================= */}
+
+      {/* ================= RAG RESULTS ================= */}
 
       {results &&
         results.length > 0 && (
+
           <>
 
             <div className="results-header">
@@ -1037,6 +1196,7 @@ function RAGResults({
 
             </div>
 
+
             {results.map(
               (result, index) => (
 
@@ -1050,22 +1210,27 @@ function RAGResults({
                     <div>
 
                       <strong>
-                        {result.file_path}
+                        📄 {result.file_path}
                       </strong>
 
                       <span>
                         Lines{" "}
-                        {result.start_line}-
+                        {result.start_line}
+                        {" – "}
                         {result.end_line}
                       </span>
 
                     </div>
+
 
                     <span className="result-number">
                       #{index + 1}
                     </span>
 
                   </div>
+
+
+                  {/* CODE */}
 
                   <pre>
 
@@ -1081,10 +1246,13 @@ function RAGResults({
             )}
 
           </>
+
         )}
 
     </section>
+
   );
+
 }
 
 /* ================= COMPONENTS ================= */
