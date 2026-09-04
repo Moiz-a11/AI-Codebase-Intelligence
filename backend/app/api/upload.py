@@ -128,7 +128,7 @@ def should_include_file(
 # ============================================================
 # UPLOAD REPOSITORY
 # ============================================================
-
+MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50 MB
 @router.post("/upload")
 async def upload_repository(
     file: UploadFile = File(...)
@@ -181,18 +181,34 @@ async def upload_repository(
     try:
 
         # ====================================================
-        # STEP 1 — SAVE ZIP
+        # STEP 1 — SAVE ZIP WITH SIZE LIMIT
         # ====================================================
 
-        with open(
-            zip_path,
-            "wb"
-        ) as buffer:
+        max_size = MAX_UPLOAD_SIZE
+        total_size = 0
 
-            shutil.copyfileobj(
-                file.file,
-                buffer
-            )
+        with open(zip_path, "wb") as buffer:
+
+            while True:
+
+                chunk = await file.read(1024 * 1024)
+
+                if not chunk:
+                    break
+
+                total_size += len(chunk)
+
+                if total_size > max_size:
+
+                    raise HTTPException(
+                        status_code=413,
+                        detail=(
+                            "Repository ZIP is too large. "
+                            "Maximum allowed size is 50 MB."
+                        )
+                    )
+
+                buffer.write(chunk)
 
 
         # ====================================================
@@ -400,7 +416,8 @@ async def upload_repository(
         raise HTTPException(
             status_code=500,
             detail=(
-                "Repository processing failed: "
-                f"{str(error)}"
+
+                "Unable to process the repository. "
+                "Please check the ZIP file and try again."
             )
         )

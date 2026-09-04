@@ -360,30 +360,45 @@ Explain the important flow step-by-step.
 
             data = response.json()
 
-            return data.get(
-                "response",
-                "No answer generated.",
-            )
+            answer = data.get("response", "").strip()
+
+            if not answer:
+                raise RuntimeError(
+                    "The AI model returned an empty response."
+                )
+
+            return answer
 
         except requests.exceptions.Timeout:
 
-            return (
+            raise RuntimeError(
                 "The AI model took too long to respond. "
-                "Please try a smaller question."
+                "Please try again with a smaller question "
+                "or a smaller repository."
             )
 
         except requests.exceptions.ConnectionError:
 
-            return (
-                "Unable to connect to Ollama. "
+            raise RuntimeError(
+                "AI service is unavailable. "
                 "Please make sure Ollama is running."
+            )
+
+        except requests.exceptions.HTTPError as error:
+
+            print(f"Ollama HTTP error: {error}")
+
+            raise RuntimeError(
+                "The AI service returned an error. "
+                "Please make sure the Ollama model "
+                "qwen2.5-coder:7b is available."
             )
 
         except Exception as error:
 
             print(f"LLM error: {error}")
 
-            return (
-                "An error occurred while generating "
-                "the AI response."
+            raise RuntimeError(
+                "Unable to generate the AI response. "
+                "Please try again."
             )

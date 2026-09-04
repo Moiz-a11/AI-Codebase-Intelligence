@@ -44,37 +44,61 @@ llm_service = LLMService()
 
 
 @router.post("/index")
-def index_repository(
-    request: IndexRequest
-):
+def index_repository(request: IndexRequest):
 
     try:
 
-        result = (
-            rag_service.index_repository(
-                request.repository_id
+        if not request.repository_id.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Repository ID is missing."
             )
+
+        result = rag_service.index_repository(
+            request.repository_id
         )
+
+        if not result:
+            raise HTTPException(
+                status_code=400,
+                detail="The repository is empty. "
+                       "Please upload a repository containing code files."
+            )
 
         return {
             "success": True,
-            **result,
+            **result
         }
 
-    except FileNotFoundError as error:
+    except HTTPException:
+        raise
+
+    except FileNotFoundError:
 
         raise HTTPException(
             status_code=404,
-            detail=str(error),
+            detail="Repository not found. "
+                   "Please upload the repository again."
+        )
+
+    except ValueError as error:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
         )
 
     except Exception as error:
 
+        print(f"Repository indexing error: {error}")
+
         raise HTTPException(
             status_code=500,
-            detail=str(error),
+            detail=(
+                "Unable to index the repository. "
+                "Please try uploading the repository again."
+            )
         )
-
 
 @router.post("/query")
 def query_repository(
@@ -82,6 +106,20 @@ def query_repository(
 ):
 
     try:
+
+        if not request.repository_id.strip():
+
+            raise HTTPException(
+                status_code=400,
+                detail="Please upload a repository first.",
+            )
+
+        if not request.question.strip():
+
+            raise HTTPException(
+                status_code=400,
+                detail="Please enter a question.",
+            )
 
         # ==========================================
         # STEP 1 — RETRIEVE RELEVANT CODE
@@ -92,19 +130,6 @@ def query_repository(
             query=request.question,
             top_k=request.top_k,
         )
-
-        if not results:
-
-            return {
-                "success": True,
-                "question": request.question,
-                "answer": (
-                    "I could not find enough "
-                    "relevant code in the repository "
-                    "to answer this question."
-                ),
-                "results": [],
-            }
 
 
         # ==========================================
@@ -174,14 +199,53 @@ CODE:
         "results": results,
         }
 
+    except HTTPException:
+        raise
 
-    except Exception as error:
+    except RuntimeError as error:
+        message = str(error)
 
-        print(
-            f"RAG query error: {error}"
-        )
+        print(f"RAG/LLM error: {message}")
+
+        # Ollama unavailable
+        if (
+            "Ollama" in message
+            or "AI service" in message
+            or "connect" in message.lower()
+        ):
+            raise HTTPException(
+                status_code=503,
+                detail=message,
+            )
+
+        # LLM timeout
+        if "too long" in message.lower():
+            raise HTTPException(
+                status_code=504,
+                detail=message,
+            )
 
         raise HTTPException(
             status_code=500,
-            detail=str(error),
+            detail=message,
+        )
+
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Repository not found. "
+                "Please upload and index the repository again."
+            ),
+        )
+
+    except Exception as error:
+        print(f"RAG query error: {error}")
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Something went wrong while analyzing "
+                "the repository. Please try again."
+            ),
         )
