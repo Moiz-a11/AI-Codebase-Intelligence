@@ -138,26 +138,16 @@ def query_repository(
 
         context_parts = []
 
-        for index, result in enumerate(results):
+        for index, result in enumerate(results[:5]):
 
             context_parts.append(
-                f"""
-SOURCE {index + 1}
+        f"SOURCE {index + 1}\n"
+        f"FILE: {result['file_path']}\n"
+        f"LINES: {result['start_line']}-{result['end_line']}\n"
+        f"CODE:\n{result['text']}\n"
+    )
 
-FILE:
-{result["file_path"]}
-
-LINES:
-{result["start_line"]}-{result["end_line"]}
-
-CODE:
-{result["text"]}
-"""
-            )
-
-        context = "\n".join(
-            context_parts
-        )
+        context = "\n".join(context_parts)
 
 
         # ==========================================

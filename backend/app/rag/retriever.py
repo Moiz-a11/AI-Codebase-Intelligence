@@ -92,13 +92,12 @@ class CodeRetriever:
 
         # ------------------------------------------
         # STEP 1
-        # Retrieve more candidates than needed.
+        # Retrieve a limited number of candidates.
+        # This keeps retrieval fast and avoids
+        # unnecessary chunks.
         # ------------------------------------------
 
-        candidate_k = max(
-            top_k * 3,
-            15
-        )
+        candidate_k = 15
 
 
         results = self.vector_store.search(
@@ -106,7 +105,6 @@ class CodeRetriever:
             query=query,
             top_k=candidate_k,
         )
-
 
         # ------------------------------------------
         # STEP 2

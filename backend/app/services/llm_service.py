@@ -20,8 +20,8 @@ class LLMService:
     ):
 
         # Prevent sending unnecessarily large context
-        context = context[:20000]
-
+        MAX_CONTEXT_CHARS = 12000
+        context = context[:MAX_CONTEXT_CHARS]
         # ==========================================
         # CODE REVIEW MODE
         # ==========================================
@@ -280,41 +280,15 @@ Do not mention files that are not present in the context.
             prompt = f"""
 You are an AI software engineering assistant.
 
-Answer the user's question using ONLY the repository
-context provided below.
+Answer the user's question using ONLY the repository context below.
 
-IMPORTANT RULES:
-
-1. Do not invent files, functions, classes, APIs, or behavior.
-
-2. Use the repository context as the primary source of truth.
-
-3. Mention relevant file paths.
-
-4. Use exact file paths from the context.
-
-5. If the context does not contain enough information,
-   clearly say so.
-
-6. Keep the answer technically accurate and concise.
-
-7. Never claim that the project lacks TypeScript if the
-   repository contains .ts or .tsx files.
-
-8. Never report an issue unless there is concrete evidence
-   in the retrieved code.
-
-9. Distinguish between confirmed issues and suggestions.
-
-10. Do not make assumptions about files that were not retrieved.
-
-11. Before reporting a code-quality issue, verify that the
-    relevant code actually appears in the repository context.
-
-12. Do not invent line numbers, functions, variables, or files.
-
-13. Provide a Sources section containing only files that
-    were actually used from the repository context.
+RULES:
+- Do not invent files, functions, variables, APIs, or behavior.
+- Use exact file paths from the context.
+- Do not invent line numbers.
+- If the context is insufficient, clearly say so.
+- Keep the answer technically accurate and concise.
+- Provide Sources using only files actually used.
 
 USER QUESTION:
 {question}
@@ -322,7 +296,7 @@ USER QUESTION:
 REPOSITORY CONTEXT:
 {context}
 
-ANSWER FORMAT:
+FORMAT:
 
 ### Explanation
 
@@ -349,8 +323,10 @@ Explain the important flow step-by-step.
                     "model": self.model,
                     "prompt": prompt,
                     "stream": False,
+                    "keep_alive": "10m",
                     "options": {
                         "temperature": 0.2,
+                        "num_predict": 700,
                     },
                 },
                 timeout=600,
